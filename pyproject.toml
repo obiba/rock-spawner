@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "rock-spawner"
+version = "0.1.0"
+description = "OBiBa/Rock server pod spawner in a Kubernetes environment"
+authors = ["Yannick Marcon <yannick.marcon@obiba.org>"]
+license = "GPLv3"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.11"
+kubernetes = "^32.0.1"
+pydantic-settings = "^2.8.1"
+uvicorn = "^0.34.0"
+
+
+[tool.poetry.group.dev.dependencies]
+python-dotenv = {extras = ["cli"], version = "^1.0.1"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
