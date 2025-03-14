@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends, status, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from .config import config
-from logging import basicConfig, INFO, DEBUG
+from .config import _config
+from logging import basicConfig, DEBUG
 from pydantic import BaseModel
-#from .views.companies import router as companies_router
+from .views.pod import router as pod_router
 
 basicConfig(level=DEBUG)
 
@@ -39,8 +39,8 @@ async def get_health(
     """
     return HealthCheck(status="OK")
 
-# app.include_router(
-#     companies_router,
-#     prefix="/company",
-#     tags=["Companies"],
-# )
+app.include_router(
+    pod_router,
+    prefix="/pod",
+    tags=["Pods"],
+)
