@@ -19,7 +19,7 @@ v1 = client.CoreV1Api()
 
 @router.post("/")
 async def create_pod(name: str) -> PodRef:
-    """Creates a Kubernetes pod."""
+    """Creates a managed pod."""
     # add random string to pod name to avoid conflicts
     pod_name = f"{name}-{secrets.token_hex(12)}"
     pod_manifest = {
@@ -45,14 +45,9 @@ async def create_pod(name: str) -> PodRef:
     #return PodRef(name=pod_name, image=_config.APP_IMAGE)
     return await get_pod(pod_name)
 
-@router.delete("/{pod_name}", status_code=204)
-async def delete_pod(pod_name: str):
-    """Deletes a Kubernetes pod."""
-    v1.delete_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
-
 @router.get("/{pod_name}")
 async def get_pod(pod_name: str) -> PodRef:
-    """Fetches the status of a specific Kubernetes pod."""
+    """Fetches the status of a specific managed pod."""
     try:
         pod = v1.read_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
         image = pod.spec.containers[0].image
@@ -66,9 +61,24 @@ async def get_pod(pod_name: str) -> PodRef:
             raise HTTPException(status_code=404, detail="Pod not found")
         raise HTTPException(status_code=500, detail=f"Error retrieving pod status: {str(e)}")
 
+@router.delete("/{pod_name}", status_code=204)
+async def delete_pod(pod_name: str):
+    """Deletes a managed pod."""
+    pods = await list_pods()
+    if pod_name not in [pod.name for pod in pods.items]:
+        raise HTTPException(status_code=404, detail="Pod not found")
+    v1.delete_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
+
 @router.get("/")
 async def list_pods() -> PodRefs:
-    """Lists all pods in the namespace."""
+    """Lists all managed pods in the namespace."""
     pods = v1.list_namespaced_pod(namespace=_config.NAMESPACE)
     pod_list = [PodRef(name=pod.metadata.name, image=_config.APP_IMAGE, status=pod.status.phase, ip=pod.status.pod_ip, port=_config.APP_PORT) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
     return PodRefs(items=pod_list)
+
+@router.delete("/", status_code=204)
+async def delete_pods():
+    """Deletes all managed pods."""
+    pods = await list_pods()
+    for pod in pods.items:
+        v1.delete_namespaced_pod(name=pod.name, namespace=_config.NAMESPACE)
