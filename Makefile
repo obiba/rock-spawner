@@ -23,3 +23,6 @@ run:
 
 docker-build:
 	docker build --no-cache=true -t obiba/rock-spawner:snapshot .
+
+docker-push:
+	docker image push obiba/rock-spawner:snapshot

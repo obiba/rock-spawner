@@ -12,5 +12,8 @@ RUN poetry config installer.max-workers 10 && \
     poetry install --no-interaction --no-root
 
 COPY rock_spawner /app/rock_spawner
+COPY start.sh /app/start.sh
+
+EXPOSE 8000
 
 ENTRYPOINT sh start.sh
