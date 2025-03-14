@@ -42,7 +42,8 @@ async def create_pod(name: str) -> PodRef:
     }
     v1.create_namespaced_pod(namespace=_config.NAMESPACE, body=pod_manifest)
     logging.info(f"Pod {pod_name}@{_config.APP_IMAGE} created successfully")
-    return PodRef(name=pod_name, image=_config.APP_IMAGE)
+    #return PodRef(name=pod_name, image=_config.APP_IMAGE)
+    return await get_pod(pod_name)
 
 @router.delete("/{pod_name}", status_code=204)
 async def delete_pod(pod_name: str):
@@ -58,7 +59,8 @@ async def get_pod(pod_name: str) -> PodRef:
         if image != _config.APP_IMAGE:
             raise HTTPException(status_code=404, detail="Pod not found")
         status = pod.status.phase  # Example statuses: Pending, Running, Succeeded, Failed
-        return PodRef(name=pod_name, image=_config.APP_IMAGE, status=status)
+        ip = pod.status.pod_ip
+        return PodRef(name=pod_name, image=_config.APP_IMAGE, status=status, ip=ip, port=_config.APP_PORT)
     except client.ApiException as e:
         if e.status == 404:
             raise HTTPException(status_code=404, detail="Pod not found")
@@ -68,5 +70,5 @@ async def get_pod(pod_name: str) -> PodRef:
 async def list_pods() -> PodRefs:
     """Lists all pods in the namespace."""
     pods = v1.list_namespaced_pod(namespace=_config.NAMESPACE)
-    pod_list = [PodRef(name=pod.metadata.name, image=_config.APP_IMAGE, status=pod.status.phase) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
+    pod_list = [PodRef(name=pod.metadata.name, image=_config.APP_IMAGE, status=pod.status.phase, ip=pod.status.pod_ip, port=_config.APP_PORT) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
     return PodRefs(items=pod_list)
