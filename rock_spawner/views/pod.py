@@ -16,6 +16,7 @@ except config.config_exception.ConfigException:
 
 # Define Kubernetes API client
 v1 = client.CoreV1Api()
+created_pods = set()  # Track created pod names
 
 @router.post("/")
 async def create_pod(name: str) -> PodRef:
@@ -42,6 +43,7 @@ async def create_pod(name: str) -> PodRef:
     }
     v1.create_namespaced_pod(namespace=_config.NAMESPACE, body=pod_manifest)
     logging.info(f"Pod {pod_name}@{_config.APP_IMAGE} created successfully")
+    created_pods.add(pod_name)
     #return PodRef(name=pod_name, image=_config.APP_IMAGE)
     return await get_pod(pod_name)
 
@@ -49,6 +51,8 @@ async def create_pod(name: str) -> PodRef:
 async def delete_pod(pod_name: str):
     """Deletes a Kubernetes pod."""
     v1.delete_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
+    logging.info(f"Pod {pod_name} deleted successfully")
+    created_pods.remove(pod_name)
 
 @router.get("/{pod_name}")
 async def get_pod(pod_name: str) -> PodRef:
@@ -72,3 +76,15 @@ async def list_pods() -> PodRefs:
     pods = v1.list_namespaced_pod(namespace=_config.NAMESPACE)
     pod_list = [PodRef(name=pod.metadata.name, image=_config.APP_IMAGE, status=pod.status.phase, ip=pod.status.pod_ip, port=_config.APP_PORT) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
     return PodRefs(items=pod_list)
+
+async def terminate_pods():
+    """Delete created pods before exiting."""
+    logging.info("Shutting down managed pods...")
+    for pod_name in created_pods:
+        try:
+            v1.delete_namespaced_pod(name=pod_name, namespace="default")
+            logging.info(f"Deleted pod: {pod_name}")
+        except Exception as e:
+            logging.error(f"Error deleting pod {pod_name}: {e}")
+
+    created_pods.clear()

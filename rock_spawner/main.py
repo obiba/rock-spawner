@@ -1,13 +1,29 @@
-from fastapi import FastAPI, Depends, status, HTTPException
+import asyncio
+import signal
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
-from .config import _config
+from contextlib import asynccontextmanager
 from logging import basicConfig, DEBUG
 from pydantic import BaseModel
-from .views.pod import router as pod_router
+from .views.pod import terminate_pods, router as pod_router
 
 basicConfig(level=DEBUG)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic here (if needed)
+    yield
+    # Shutdown logic here
+    await terminate_pods()
+
+# Handle OS signals (SIGTERM, SIGINT)
+def handle_exit(*args):
+    asyncio.create_task(terminate_pods())
+
+signal.signal(signal.SIGTERM, handle_exit)
+signal.signal(signal.SIGINT, handle_exit)
+
+app = FastAPI(lifespan=lifespan)
 
 origins = ["*"]
 
