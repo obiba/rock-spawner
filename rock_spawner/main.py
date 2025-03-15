@@ -4,6 +4,7 @@ from .config import _config
 from logging import basicConfig, DEBUG
 from pydantic import BaseModel
 from .views.pod import router as pod_router
+from .views.r import router as r_router
 
 basicConfig(level=DEBUG)
 
@@ -43,4 +44,10 @@ app.include_router(
     pod_router,
     prefix="/pod",
     tags=["Pods"],
+)
+
+app.include_router(
+    r_router,
+    prefix="/rserver",
+    tags=["R Server"],
 )
