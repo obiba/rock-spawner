@@ -5,10 +5,10 @@ from ..services.pod import PodService
 router = APIRouter()
 
 @router.post("/")
-async def create_pod(wait: bool = False) -> PodRef:
+async def create_pod() -> PodRef:
     """Creates a managed pod."""
     service = PodService()
-    return await service.create_pod(wait)
+    return await service.create_pod()
 
 @router.get("/{pod_name}")
 async def get_pod(pod_name: str) -> PodRef:

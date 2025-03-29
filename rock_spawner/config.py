@@ -1,4 +1,6 @@
 from pydantic_settings import BaseSettings
+from typing import Optional
+from pydantic import Field
 from functools import lru_cache
 
 class Config(BaseSettings):
@@ -7,6 +9,7 @@ class Config(BaseSettings):
     APP_BASENAME: str = "rock"
     APP_IMAGE: str = "obiba/rock:latest"
     APP_PORT: int = 8085
+    APP_SERVICE: Optional[str] = Field(default=None) # ClusterIP, NodePort, LoadBalancer
     ROCK_CLUSTER: str = "kubernetes"
     ROCK_ADMINISTRATOR_NAME: str = ""
     ROCK_ADMINISTRATOR_PASSWORD: str = ""

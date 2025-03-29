@@ -23,7 +23,7 @@ class PodService:
     def __init__(self):
         pass
 
-    async def create_pod(self, wait: bool = False) -> PodRef:
+    async def create_pod(self) -> PodRef:
         """Creates a pod with the app image.
 
         Args:
@@ -36,7 +36,12 @@ class PodService:
         pod_manifest = {
             "apiVersion": "v1",
             "kind": "Pod",
-            "metadata": {"name": pod_name},
+            "metadata": {
+                "name": pod_name,
+                "labels": {
+                    "app": pod_name,
+                },
+            },
             "spec": {
                 "containers": [
                     {
@@ -87,10 +92,28 @@ class PodService:
         }
         v1.create_namespaced_pod(namespace=_config.NAMESPACE, body=pod_manifest)
         logging.info(f"Pod {pod_name}@{_config.APP_IMAGE} created successfully")
-        if wait:
-            return await self.ensure_running_pod(pod_name)
-        else:
-            return await self.get_pod(pod_name)
+        # make a service if APP_SERVICE is not None
+        if _config.APP_SERVICE:
+            service_manifest = {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {
+                    "name": f"{pod_name}-service"
+                },
+                "spec": {
+                    "selector": {"app": pod_name},
+                    "ports": [{
+                        "port": _config.APP_PORT,
+                        "targetPort": _config.APP_PORT,
+                    }],
+                    "type": _config.APP_SERVICE,
+                },
+            }
+            v1.create_namespaced_service(namespace=_config.NAMESPACE, body=service_manifest)
+            logging.info(f"Service {pod_name} created successfully")
+        
+        # Wait for the pod to be running (otherwise IP is not available)
+        return await self.ensure_running_pod(pod_name)
     
     async def get_pod(self, pod_name: str) -> PodRef:
         """Fetches the status of a pod by name.
@@ -108,7 +131,16 @@ class PodService:
                 raise HTTPException(status_code=404, detail="Pod not found")
             status = pod.status.phase  # Example statuses: Pending, Running, Succeeded, Failed
             ip = pod.status.pod_ip
-            return PodRef(name=pod_name, image=_config.APP_IMAGE, status=status, ip=ip, port=_config.APP_PORT)
+            port = _config.APP_PORT
+            # get service if APP_SERVICE is not None
+            if _config.APP_SERVICE:
+                service = v1.read_namespaced_service(name=f"{pod_name}-service", namespace=_config.NAMESPACE)
+                if _config.APP_SERVICE == "NodePort":
+                    port = service.spec.ports[0].node_port
+                    ip = service.spec.cluster_ip
+                else:
+                    port = service.spec.ports[0].port
+            return PodRef(name=pod_name, image=_config.APP_IMAGE, status=status, ip=ip, port=port)
         
         except client.ApiException as e:
             if e.status == 404:
@@ -124,9 +156,8 @@ class PodService:
         pods = await self.list_pods()
         if pod_name not in [pod.name for pod in pods.items]:
             raise HTTPException(status_code=404, detail="Pod not found")
-        v1.delete_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
-        logging.info(f"Pod {pod_name} deleted successfully")
-
+        pod = [pod for pod in pods.items if pod.name == pod_name][0]
+        await self.delete_pod_ref(pod)
 
     async def list_pods(self) -> PodRefs:
         """Lists all pods in the namespace with the app image.
@@ -135,15 +166,36 @@ class PodService:
             PodRefs: The list of pod descriptors.
         """
         pods = v1.list_namespaced_pod(namespace=_config.NAMESPACE)
-        pod_list = [PodRef(name=pod.metadata.name, image=_config.APP_IMAGE, status=pod.status.phase, ip=pod.status.pod_ip, port=_config.APP_PORT) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
+        pod_list = [await self.get_pod(pod.metadata.name) for pod in pods.items if pod.spec.containers[0].image == _config.APP_IMAGE]
         return PodRefs(items=pod_list)
 
     async def delete_pods(self):
         """Deletes all pods in the namespace with the app image."""
         pods = await self.list_pods()
         for pod in pods.items:
-            v1.delete_namespaced_pod(name=pod.name, namespace=_config.NAMESPACE)
+            await self.delete_pod_ref(pod)
         logging.info("All pods deleted successfully")
+
+    async def delete_pod_ref(self, pod_ref: PodRef):
+        """Deletes a pod by its descriptor.
+        
+        Args:
+            pod_ref (PodRef): The pod descriptor.
+        """
+        pod_name = pod_ref.name
+        # delete the service if APP_SERVICE is not None
+        if _config.APP_SERVICE:
+            try:
+                v1.delete_namespaced_service(name=f"{pod_name}-service", namespace=_config.NAMESPACE)
+                logging.info(f"Service {pod_name} deleted successfully")
+            except client.ApiException as e:
+                logging.error(f"Error deleting service: {str(e)}")
+        # delete the pod
+        try:
+            v1.delete_namespaced_pod(name=pod_name, namespace=_config.NAMESPACE)
+        except client.ApiException as e:
+            logging.error(f"Error deleting pod: {str(e)}")
+        logging.info(f"Pod {pod_name} deleted successfully")
 
     async def ensure_running_pod(self, pod_name: str) -> PodRef:
         """Ensures a pod is running and returns its pod descriptor.
