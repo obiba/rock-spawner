@@ -1,8 +1,7 @@
-from fastapi import FastAPI, Depends, status, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .config import _config
 from logging import basicConfig, DEBUG
-from pydantic import BaseModel
+from .views.app import router as app_router
 from .views.pod import router as pod_router
 from .views.r import router as r_router
 
@@ -20,25 +19,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class HealthCheck(BaseModel):
-    """Response model to validate and return when performing a health check."""
-    status: str = "OK"
-
-@app.get(
-    "/healthz",
-    tags=["Healthcheck"],
-    summary="Perform a Health Check",
-    response_description="Return HTTP Status Code 200 (OK)",
-    status_code=status.HTTP_200_OK,
-    response_model=HealthCheck,
+app.include_router(
+    app_router,
+    prefix="",
+    tags=["App"],
 )
-async def get_health(
-) -> HealthCheck:
-    """
-    Endpoint to perform a healthcheck on for kubenernetes liveness and
-    readiness probes.
-    """
-    return HealthCheck(status="OK")
 
 app.include_router(
     pod_router,

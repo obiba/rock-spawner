@@ -7,6 +7,7 @@ class Config(BaseSettings):
     APP_BASENAME: str = "rock"
     APP_IMAGE: str = "obiba/rock:latest"
     APP_PORT: int = 8085
+    ROCK_CLUSTER: str = "kubernetes"
     ROCK_ADMINISTRATOR_NAME: str = ""
     ROCK_ADMINISTRATOR_PASSWORD: str = ""
     ROCK_MANAGER_NAME: str = ""

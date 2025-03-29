@@ -53,6 +53,10 @@ class PodService:
                                 "value": pod_name
                             },
                             {
+                                "name": "ROCK_CLUSTER",
+                                "value": _config.ROCK_CLUSTER
+                            },
+                            {
                                 "name": "ROCK_ADMINISTRATOR_NAME",
                                 "value": _config.ROCK_ADMINISTRATOR_NAME
                             },
