@@ -26,9 +26,6 @@ class PodService:
     async def create_pod(self) -> PodRef:
         """Creates a pod with the app image.
 
-        Args:
-            wait (bool): Whether to wait for the pod to be running before returning.
-
         Returns:
             PodRef: The pod descriptor.
         """

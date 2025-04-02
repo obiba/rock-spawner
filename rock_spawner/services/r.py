@@ -49,7 +49,7 @@ class RService:
     async def connect(self):
         """Connects to the R server."""
         if self.pod is None:
-            self.pod = await PodService().create_pod(wait=True)
+            self.pod = await PodService().create_pod()
             await self._ensure_ready(self.pod)
 
     async def close(self):
