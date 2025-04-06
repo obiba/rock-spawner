@@ -9,6 +9,10 @@ class Config(BaseSettings):
     APP_BASENAME: str = "rock"
     APP_IMAGE: str = "obiba/rock:latest"
     APP_PORT: int = 8085
+    APP_MEMORY_REQUEST: Optional[str] = Field(default=None) # e.g. 512Mi
+    APP_MEMORY_LIMIT: Optional[str] = Field(default=None) # e.g. 512Mi
+    APP_CPU_REQUEST: Optional[str] = Field(default=None) # e.g. 500m
+    APP_CPU_LIMIT: Optional[str] = Field(default=None) # e.g. 500m
     APP_SERVICE: Optional[str] = Field(default=None) # ClusterIP, NodePort, LoadBalancer
     ROCK_CLUSTER: str = "kubernetes"
     ROCK_ADMINISTRATOR_NAME: str = ""

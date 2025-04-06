@@ -82,11 +82,23 @@ class PodService:
                                 "name": "ROCK_USER_PASSWORD",
                                 "value": _config.ROCK_USER_PASSWORD
                             }
-                        ]
+                        ],
                     }
                 ]
             },
         }
+        # Set resource requests and limits if specified
+        if _config.APP_MEMORY_REQUEST or _config.APP_MEMORY_LIMIT or _config.APP_CPU_REQUEST or _config.APP_CPU_LIMIT:
+            pod_manifest["spec"]["containers"][0]["resources"] = {
+                "requests": {},
+                "limits": {}
+            }
+        if _config.APP_MEMORY_REQUEST or _config.APP_MEMORY_LIMIT:
+            pod_manifest["spec"]["containers"][0]["resources"]["requests"]["memory"] = _config.APP_MEMORY_REQUEST if _config.APP_MEMORY_REQUEST else _config.APP_MEMORY_LIMIT
+            pod_manifest["spec"]["containers"][0]["resources"]["limits"]["memory"] = _config.APP_MEMORY_LIMIT if _config.APP_MEMORY_LIMIT else _config.APP_MEMORY_REQUEST
+        if _config.APP_CPU_REQUEST or _config.APP_CPU_LIMIT:
+            pod_manifest["spec"]["containers"][0]["resources"]["requests"]["cpu"] = _config.APP_CPU_REQUEST if _config.APP_CPU_REQUEST else _config.APP_CPU_LIMIT
+            pod_manifest["spec"]["containers"][0]["resources"]["limits"]["cpu"] = _config.APP_CPU_LIMIT if _config.APP_CPU_LIMIT else _config.APP_CPU_REQUEST
         v1.create_namespaced_pod(namespace=_config.NAMESPACE, body=pod_manifest)
         logging.info(f"Pod {pod_name}@{_config.APP_IMAGE} created successfully")
         # make a service if APP_SERVICE is not None
